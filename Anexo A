@@ -1,0 +1,213 @@
+# KNN-A_CENTRADO
+# KNN ALEATORIO CENTRADO
+
+################# Librerias del proyecto ##################
+
+library(randomForest)
+library(gmodels)
+library(neuralnet)
+library(RSNNS)
+library(Rcpp)
+library(lattice)
+library(ggplot2)
+library(caret)
+
+library(class)
+library(foreign)
+library(ggplot2)
+library(gmodels)
+library(e1071)
+library(C50)
+set.seed(123)
+#install.packages("ggplot2")
+#install.packages("ggThemeAssist")
+library(GGally)
+print("Las librerias han sido cargadas")
+############################################################
+# #*************************** PRIMER DATA FRAME ******************************#
+#
+datosImportados <- read.csv("myDataRMR.csv",
+                            stringsAsFactors = TRUE)
+
+
+
+print("La dimensión del data frame es:")
+dim(datosImportados)
+
+m=dim(datosImportados)[1]+0
+print("El numero de observaciones es")
+m
+
+n=dim(datosImportados)[2]-1
+print("El numero de variables o caracteristicas es")
+n
+
+
+# #Exploración de los datos
+str(datosImportados)
+plot(datosImportados$X1tBodyAccmeanX,main =
+       "Exploración visual de algunas variables",
+     xlab = "Número de Muestras", ylab="Característica")
+
+boxplot(datosImportados$X1tBodyAccmeanX,
+        main = "Caja de Bigotes",
+        xlab="Medidas de Tendencia Central",
+        ylab="Valor")
+# Se aprecia que no se encuentran normalizados
+
+# #Visualizar todo los datos
+# ggpairs(datosImportados, mapping = aes(colour = datosImportados$activity))
+
+
+############################## Los datos no se encuentran normalizados #####
+
+##### Función para normalizar ##############################################
+normalize <- function(x) {
+  return((x - min(x)) / (max(x) - min(x)))
+}
+############################################################################
+
+#Normalización de los datos numéricos y reasignación del data frame con datos normalizados
+# y activity
+datosNormalizados <- as.data.frame(lapply(datosImportados[1:m,1:n], 
+                                          normalize))
+datosFinales <- data.frame(datosNormalizados,datosImportados$activity)
+datosFinales$datosImportados.activity
+#Renombramos el nombre a la columna de activity
+colnames(datosFinales)[n+1] <- "activity"
+#Comprobamos reasignación de nombre
+table(datosFinales$activity)
+str(datosFinales)
+#Visualizamos la distribución en un histograma de las Activitys
+
+barplot(table(datosFinales$activity), main = "Activity en el data set",
+        xlab = "Activity")
+
+# Reasignar activity pero con los nommbres
+# 1 WALKING
+# 2 WALKING_UPSTAIRS
+# 3 WALKING_DOWNSTAIRS
+# 4 SITTING
+# 5 STANDING
+# 6 LAYING
+
+
+
+
+######## Renombramos el data frame a humanActTrain
+
+table(datosFinales$activity)
+# recode datosFinales$activity as a factor
+datosFinales$activity <- factor(datosFinales$activity, levels = c("1", "2","3", "4","5", "6"),
+                                labels = c("Walking", "WalkingUpstairs",
+                                           "WalkingDownstairs","Sitting",
+                                           "Standing","Laying"))
+
+
+table(datosFinales$activity)
+barplot(table(datosFinales$activity),
+        main = "Distribucción de Activitys en el dataset ")
+
+#Comprobar que los datos han sido normalizados
+humanActTrain <- datosFinales
+
+str(humanActTrain)
+summary(humanActTrain$X1tBodyAccmeanX)
+
+plot(humanActTrain$X1tBodyAccmeanX,main =
+       "Exploración visual de algunas variables ya normalizadas",
+     xlab = "Número de Muestras", ylab="Característica")
+
+boxplot(humanActTrain$X1tBodyAccmeanX,
+        main = "Caja de Bigotes ya normalizadas",
+        xlab="Medidas de Tendencia Central",
+        ylab="Valor")
+
+
+print("Los datos se han cargado con Exito")
+#4 DATOS PARA MODELO SI ALEATORIO SI ESCALADO
+
+#x_columna <- humanActTrain[1:n]
+datosEscalados <- as.data.frame(scale(humanActTrain[1:m,1:n]))
+x_columna <- datosEscalados[1:m,1:n] #Si queremos centrar los datos 
+
+y_label <- humanActTrain$activity
+table(y_label)
+
+set.seed(123)
+porcentaje <- sample(1:nrow(x_columna),
+                     size=nrow(x_columna)*0.80,replace = FALSE) 
+#random selection of 80% data.
+
+x_aleatorio <- x_columna[porcentaje,] # 80% training data
+x_aleatorioRemanante<- x_columna[-porcentaje,] # remaining 20% test data
+y_aleatorio_labels <- y_label[porcentaje]
+y_aleatorio_labelsRemante <-y_label[-porcentaje]
+
+print("Los datos si escalados para modelo aleatorio han sido cargados")
+print("Cargue script 6. Modelo si Aleatorio")
+# 6-MODELO SI ALEATORIO
+print("ENTRENAMIENTO CON MUESTRA ALEATORIA")
+k1=91
+knn.k1 <- knn(x_aleatorio, x_aleatorioRemanante, y_aleatorio_labels, 
+              k = k1, l = 0,
+              prob = FALSE, use.all = TRUE)
+
+CrossTable(x = y_aleatorio_labelsRemante, y = knn.k1, prop.chisq=FALSE,
+           dnn = c('Predicción','Actual')
+)
+
+tb1 <- table(knn.k1,y_aleatorio_labelsRemante)
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(tb1)
+
+###########################################################################
+
+k2=101
+knn.k2 <- knn(x_aleatorio, x_aleatorioRemanante, y_aleatorio_labels, 
+              k = k2, l = 0,
+              prob = FALSE, use.all = TRUE)
+
+CrossTable(x = y_aleatorio_labelsRemante, y = knn.k2, prop.chisq=FALSE,
+           dnn = c('Predicción','Actual')
+)
+
+tb2 <- table(knn.k2,y_aleatorio_labelsRemante)
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(tb2)
+
+###########################################################################
+
+k3=111
+knn.k3 <- knn(x_aleatorio, x_aleatorioRemanante, y_aleatorio_labels, 
+              k = k3, l = 0,
+              prob = FALSE, use.all = TRUE)
+
+CrossTable(x = y_aleatorio_labelsRemante, y = knn.k3, prop.chisq=FALSE,
+           dnn = c('Predicción','Actual')
+)
+tb3 <- table(knn.k3,y_aleatorio_labelsRemante)
+accuracy <- function(x){sum(diag(x)/(sum(rowSums(x)))) * 100}
+accuracy(tb3)
+
+barplot(table(x_aleatorio,x_aleatorioRemanante))
+
+
+######################### Resumen Accuracy y Grafico con porcentaje #######
+vectorPromedios<- c(accuracy(tb1),accuracy(tb2),accuracy(tb3))
+vectorPromedios<-round(vectorPromedios,digits = 2)
+bpl<- barplot(vectorPromedios,
+              #main="Desempeño de Modelo Aleatorio Knn, Datos no escalados",
+              main="Performance KNN Aleatorio, CENTRADOS",
+              xlab="Valores de K",ylab = "Porcentaje",
+              names.arg=c(k1, k2, k3),
+              col=c("orange","orange","orange")
+)
+
+#main="Desempeño de Modelo No aleatorio"
+EP <- vectorPromedios
+EP<- round(EP, digits = 2)
+#EP <-signif(EP, digits = 2)
+text(bpl, EP-3.5,format(EP), cex=-1)
+
+print("Los modelos aleatorios han sido creados")
